@@ -1,0 +1,51 @@
+Timestamp: 20250519_011949
+Input File: data/preprocessed_merged_data.csv
+Split Ratios: 60% Train, 20% Val, 20% Test
+Model Type: RF
+Best Hyperparameters: {'max_depth': None, 'max_features': 0.7, 'min_samples_leaf': 5, 'min_samples_split': 16, 'n_estimators': 561}
+Tuning Validation Metrics (model scale): {'MAE_model_scale': 0.34446424372117695, 'RMSE_model_scale': 0.7315088010550405, 'R2_model_scale': 0.3808736828991701}
+Final Validation (Original Scale): MAE=827.59, RMSE=1256.20
+Final Validation (Model Scale): R2=0.3809
+Test Performance (Original Scale): MAE=1032.84, RMSE=1424.73
+Test Performance (Model Scale): R2=0.5476
+Selected Features (20):
+Total_Visitor_Count_Lag1
+is_day_off_official
+Total_Visitor_Count_Lag7
+Total_Visitor_Count_Roll7_Mean
+Precipitation_mm(mm)
+AvgWindSpd(m/s)
+Total_Visitor_Count_Roll14_Mean
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag14
+MaxWindSpd(m/s)
+Diurnal_Temperature_Range
+Total_Visitor_Count_Lag30
+Hour_Of_Max_Temp
+Avg_Humidity_pct(%rh)
+Temp_Humidity_Interaction
+MaxTempC(℃)
+MinTempC(℃)
+Hour_Of_Min_Temp
+month_sin
+AvgTempC(℃)
+Scaled Features (19):
+Total_Visitor_Count_Lag1
+Total_Visitor_Count_Lag7
+Total_Visitor_Count_Roll7_Mean
+Precipitation_mm(mm)
+AvgWindSpd(m/s)
+Total_Visitor_Count_Roll14_Mean
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag14
+MaxWindSpd(m/s)
+Diurnal_Temperature_Range
+Total_Visitor_Count_Lag30
+Hour_Of_Max_Temp
+Avg_Humidity_pct(%rh)
+Temp_Humidity_Interaction
+MaxTempC(℃)
+MinTempC(℃)
+Hour_Of_Min_Temp
+month_sin
+AvgTempC(℃)

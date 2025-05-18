@@ -1,0 +1,32 @@
+Timestamp: 20250519_011935
+Input File: data/preprocessed_merged_data.csv
+Split Ratios: 60% Train, 20% Val, 20% Test
+Model Type: RF
+Best Hyperparameters: {'max_depth': None, 'max_features': 0.7, 'min_samples_leaf': 5, 'min_samples_split': 16, 'n_estimators': 561}
+Tuning Validation Metrics (model scale): {'MAE_model_scale': 0.34441091814188185, 'RMSE_model_scale': 0.7313291721237544, 'R2_model_scale': 0.3811777102568935}
+Final Validation (Original Scale): MAE=827.49, RMSE=1256.50
+Final Validation (Model Scale): R2=0.3812
+Test Performance (Original Scale): MAE=1034.24, RMSE=1427.24
+Test Performance (Model Scale): R2=0.5472
+Selected Features (20):
+Total_Visitor_Count_Lag1
+is_day_off_official
+Total_Visitor_Count_Lag7
+Total_Visitor_Count_Roll7_Mean
+Precipitation_mm(mm)
+AvgWindSpd(m/s)
+Total_Visitor_Count_Roll14_Mean
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag14
+MaxWindSpd(m/s)
+Diurnal_Temperature_Range
+Total_Visitor_Count_Lag30
+Hour_Of_Max_Temp
+Avg_Humidity_pct(%rh)
+Temp_Humidity_Interaction
+MaxTempC(℃)
+MinTempC(℃)
+Hour_Of_Min_Temp
+month_sin
+AvgTempC(℃)
+No features were scaled.

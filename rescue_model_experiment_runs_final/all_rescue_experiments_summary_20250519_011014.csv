@@ -1,0 +1,4 @@
+﻿Experiment_Name,Test_Accuracy_Adj,Test_Precision_Adj,Test_Recall_Adj,Test_F1_Score_Adj,Test_ROC_AUC,Optimal_Threshold,Best_Params
+RF_SMOTE_RecallScoring,0.7068965517241379,0.42105263157894735,0.691358024691358,0.5233644859813084,0.7389836778101447,0.36292843272450165,"{'class_weight': None, 'max_depth': 13, 'max_features': None, 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 476}"
+RF_NoSMOTE_Balanced_F1Scoring,0.7672413793103449,0.5,0.5679012345679012,0.5317919075144508,0.7822629121006149,0.47669290282470506,"{'class_weight': 'balanced', 'max_depth': 6, 'max_features': 'sqrt', 'min_samples_leaf': 10, 'min_samples_split': 7, 'n_estimators': 346}"
+RF_SMOTE_F1Scoring,0.7097701149425287,0.4253731343283582,0.7037037037037037,0.5302325581395348,0.7686687936375826,0.3412417418035396,"{'class_weight': None, 'max_depth': 18, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 4, 'n_estimators': 333}"

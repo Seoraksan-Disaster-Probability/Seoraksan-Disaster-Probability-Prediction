@@ -1,0 +1,32 @@
+Timestamp: 20250519_011533
+Input File: data/preprocessed_merged_data.csv
+Split Ratios: 60% Train, 20% Val, 20% Test
+Model Type: LGBM
+Best Hyperparameters: {'colsample_bytree': 0.6971061460667621, 'learning_rate': 0.008266909505945748, 'max_depth': 5, 'min_child_samples': 45, 'n_estimators': 1425, 'num_leaves': 20, 'reg_alpha': 1.039708314340944, 'reg_lambda': 2.8385016390999573, 'subsample': 0.6125253169822235}
+Tuning Validation Metrics (model scale): {'MAE_model_scale': 0.2759116378546618, 'RMSE_model_scale': 0.36174697093211594, 'R2_model_scale': 0.6570654623555845}
+Final Validation (Original Scale): MAE=796.55, RMSE=1183.01
+Final Validation (Model Scale): R2=0.6571
+Test Performance (Original Scale): MAE=1058.95, RMSE=1437.63
+Test Performance (Model Scale): R2=0.5848
+Selected Features (20):
+Total_Visitor_Count_Lag1
+is_day_off_official
+Total_Visitor_Count_Roll7_Mean
+Total_Visitor_Count_Lag7
+Precipitation_mm(mm)
+AvgWindSpd(m/s)
+Total_Visitor_Count_Roll14_Mean
+MaxWindSpd(m/s)
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag14
+Diurnal_Temperature_Range
+Hour_Of_Max_Temp
+Avg_Humidity_pct(%rh)
+Total_Visitor_Count_Lag30
+Temp_Humidity_Interaction
+MaxTempC(℃)
+month_sin
+Hour_Of_Min_Temp
+MinTempC(℃)
+month_10
+No features were scaled.

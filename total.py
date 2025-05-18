@@ -17,7 +17,7 @@ from sklearn.metrics import ( # 분류 평가지표
 
 # --- 0. Configuration ---
 # File Paths
-INPUT_DATA_FILE = "data/preprocessed_data.csv"
+INPUT_DATA_FILE = "data/preprocessed_merged_data.csv"
 VISITOR_MODEL_PKG_PATH = "regression/visitor_lgbm_regressor_best_model.pkl"
 RESCUE_MODEL_PKG_PATH = "classification/randomforest_best_model.pkl" # 파일명 확인: randomforest_best_mode.pkl -> randomforest_best_model.pkl
 

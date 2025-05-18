@@ -1,0 +1,38 @@
+Timestamp: 20250519_011014
+Input File: data/preprocessed_merged_data.csv
+Split Ratios: 60%/20%/20%
+Best Hyperparameters: {'class_weight': 'balanced', 'max_depth': 6, 'max_features': 'sqrt', 'min_samples_leaf': 10, 'min_samples_split': 7, 'n_estimators': 346}
+Validation Metrics: {'Accuracy': 0.7976878612716763, 'Precision': 0.6415094339622641, 'Recall': 0.4, 'F1-Score': 0.4927536231884058, 'ROC_AUC': 0.8097363083164301}
+Test Performance (Adj. Threshold): {'Accuracy': 0.7672413793103449, 'Precision': 0.5, 'Recall': 0.5679012345679012, 'F1-Score': 0.5317919075144508, 'ROC_AUC': 0.7822629121006149}
+Optimal Threshold: 0.4767
+Selected Features (30):
+Temp_Humidity_Interaction
+Total_Visitor_Count_Lag1
+MaxTempC(℃)
+Total_Visitor_Count_Lag7
+MinTempC(℃)
+AvgTempC(℃)
+Total_Visitor_Count_Roll7_Mean
+Total_Visitor_Count_Lag14
+Total_Visitor_Count_Roll14_Mean
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag30
+Avg_Humidity_pct(%rh)
+Diurnal_Temperature_Range
+AvgWindSpd(m/s)
+MaxWindSpd(m/s)
+Hour_Of_Max_Temp
+Precipitation_mm(mm)
+Hour_Of_Min_Temp
+is_weekend
+rescue_event_yesterday
+month_10
+month_4
+month_5
+is_final_long_holiday_rescue
+month_6
+month_9
+consecutive_freeze_2days
+month_8
+month_1
+month_2

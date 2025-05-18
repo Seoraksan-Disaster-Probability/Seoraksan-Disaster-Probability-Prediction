@@ -1,0 +1,50 @@
+Timestamp: 20250519_012003
+Input File: data/preprocessed_merged_data.csv
+Split Ratios: 60% Train, 20% Val, 20% Test
+Model Type: XGB
+Best Hyperparameters: {'colsample_bytree': 0.9193180715867101, 'gamma': 0.3249819653888826, 'learning_rate': 0.1503933754515407, 'max_depth': 8, 'min_child_weight': 3, 'n_estimators': 570, 'reg_alpha': 0.05523354374740941, 'reg_lambda': 1.1577297910151174, 'subsample': 0.7753896492072347}
+Tuning Validation Metrics (model scale): {'MAE_model_scale': 0.2915416546566952, 'RMSE_model_scale': 0.390007482340912, 'R2_model_scale': 0.6013908187505863}
+Final Validation (Original Scale): MAE=835.48, RMSE=1276.25
+Final Validation (Model Scale): R2=0.6014
+Test Performance (Original Scale): MAE=1075.38, RMSE=1466.39
+Test Performance (Model Scale): R2=0.5388
+Selected Features (20):
+Total_Visitor_Count_Lag1
+is_day_off_official
+Total_Visitor_Count_Roll7_Mean
+Total_Visitor_Count_Lag7
+Precipitation_mm(mm)
+AvgWindSpd(m/s)
+Total_Visitor_Count_Roll14_Mean
+MaxWindSpd(m/s)
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag14
+Diurnal_Temperature_Range
+Hour_Of_Max_Temp
+Avg_Humidity_pct(%rh)
+Total_Visitor_Count_Lag30
+Temp_Humidity_Interaction
+MaxTempC(℃)
+month_sin
+Hour_Of_Min_Temp
+MinTempC(℃)
+month_10
+Scaled Features (18):
+Total_Visitor_Count_Lag1
+Total_Visitor_Count_Roll7_Mean
+Total_Visitor_Count_Lag7
+Precipitation_mm(mm)
+AvgWindSpd(m/s)
+Total_Visitor_Count_Roll14_Mean
+MaxWindSpd(m/s)
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag14
+Diurnal_Temperature_Range
+Hour_Of_Max_Temp
+Avg_Humidity_pct(%rh)
+Total_Visitor_Count_Lag30
+Temp_Humidity_Interaction
+MaxTempC(℃)
+month_sin
+Hour_Of_Min_Temp
+MinTempC(℃)
