@@ -294,87 +294,54 @@ def engineer_features_for_rescue_model(df_input_with_pred_visitor, date_col,
             week_map = pd.Series(weekly_rescue_agg.values, index=df_eng['year_week_iso_temp']).drop_duplicates().to_dict()
             df_eng['rescue_in_last_week'] = df_eng['last_year_week_iso_temp'].map(week_map).fillna(0).astype(int)
             df_eng.drop(columns=['year_week_iso_temp', 'last_week_date_temp', 'last_year_week_iso_temp'], inplace=True, errors='ignore')
-        except: df_eng['rescue_in_last_week'] = 0
-    else: df_eng['rescue_in_last_week'] = 0
+        except: 
+            df_eng['rescue_in_last_week'] = 0
+    else: 
+        df_eng['rescue_in_last_week'] = 0
+        
     time_cols = {'TimeOfMaxTempC': 'Hour_Of_Max_Temp', 'TimeOfMinTempC': 'Hour_Of_Min_Temp'}
+    
     for orig, new in time_cols.items():
         if orig in df_eng.columns:
-            try: df_eng[new] = pd.to_datetime(df_eng[orig], format='%H:%M', errors='coerce').dt.hour.fillna(-1).astype(int)
-            except: df_eng[new] = -1
+            try: 
+                df_eng[new] = pd.to_datetime(df_eng[orig], format='%H:%M', errors='coerce').dt.hour.fillna(-1).astype(int)
+            except: 
+                df_eng[new] = -1
+                
             df_eng.drop(columns=[orig], inplace=True, errors='ignore')
+            
     temp_c, hum_c = 'MaxTempC(℃)', 'Avg_Humidity_pct(%rh)'
     if temp_c in df_eng.columns and hum_c in df_eng.columns:
         df_eng['Temp_Humidity_Interaction'] = df_eng[temp_c].fillna(df_eng[temp_c].mean()) * df_eng[hum_c].fillna(df_eng[hum_c].mean())
+    
     if date_col in df_eng.columns and 'is_weekend' in df_eng.columns: # Ensure is_weekend exists
         min_year_h, max_year_h = df_eng[date_col].dt.year.min(), df_eng[date_col].dt.year.max()
-        if pd.isna(min_year_h) or pd.isna(max_year_h): current_year_h = df_eng[date_col].dt.year.iloc[0]; kr_holidays_r = holidays.KR(years=current_year_h)
-        else: kr_holidays_r = holidays.KR(years=range(min_year_h, max_year_h + 1))
+        if pd.isna(min_year_h) or pd.isna(max_year_h): 
+            current_year_h = df_eng[date_col].dt.year.iloc[0]; kr_holidays_r = holidays.KR(years=current_year_h)
+        else: 
+            kr_holidays_r = holidays.KR(years=range(min_year_h, max_year_h + 1))
+            
         df_eng['is_official_holiday'] = df_eng[date_col].apply(lambda date: date in kr_holidays_r)
         df_eng['is_day_off_official'] = (df_eng['is_weekend'] | df_eng['is_official_holiday']).astype(int)
+        
         long_holiday_threshold = 3
         df_eng['is_base_long_holiday'] = ((df_eng['is_day_off_official'] == 1) & (df_eng.groupby((df_eng['is_day_off_official'].diff(1) != 0).astype(int).cumsum())['is_day_off_official'].transform('sum') >= long_holiday_threshold)).astype(int)
         df_eng['prev_day_is_off'] = df_eng['is_day_off_official'].shift(1).fillna(0).astype(int)
         df_eng['next_day_is_off'] = df_eng['is_day_off_official'].shift(-1).fillna(0).astype(int)
         df_eng['is_bridge_day_candidate'] = ((df_eng['is_day_off_official'] == 0) & (df_eng['prev_day_is_off'] == 1) & (df_eng['next_day_is_off'] == 1)).astype(int)
         df_eng['is_extended_holiday'] = df_eng['is_base_long_holiday']
+        
         df_eng.loc[df_eng['is_bridge_day_candidate'].values == 1, 'is_extended_holiday'] = 1 # Use .values for boolean indexing
         df_eng.loc[df_eng['is_bridge_day_candidate'].shift(-1).fillna(False).values, 'is_extended_holiday'] = 1
         df_eng.loc[df_eng['is_bridge_day_candidate'].shift(1).fillna(False).values, 'is_extended_holiday'] = 1
+        
         df_eng['final_holiday_group'] = (df_eng['is_extended_holiday'].diff(1) != 0).astype(int).cumsum()
         df_eng['consecutive_extended_days_off'] = df_eng.groupby('final_holiday_group')['is_extended_holiday'].transform('sum')
         df_eng['is_final_long_holiday_rescue'] = ((df_eng['is_extended_holiday'] == 1) & (df_eng['consecutive_extended_days_off'] >= long_holiday_threshold)).astype(int)
+        
         df_eng.drop(columns=['is_official_holiday', 'is_day_off_official', 'day_off_group', 'consecutive_official_days_off', 'is_base_long_holiday', 'prev_day_is_off', 'next_day_is_off', 'is_bridge_day_candidate', 'is_extended_holiday', 'final_holiday_group', 'consecutive_extended_days_off'], inplace=True, errors='ignore')
     print("Feature engineering for rescue model complete.")
     return df_eng
-
-# --- 3. Main Prediction Pipeline ---
-def run_prediction_pipeline(input_df_for_prediction_period, visitor_pkg, rescue_pkg, date_col_name):
-    print("\n--- Running Full Prediction Pipeline ---")
-    
-    # --- Visitor Count Prediction ---
-    print("Step 1: Predicting Visitor Count...")
-    # For future prediction, actual_visitor_col_for_lag and actual_rescue_event_col_for_lag will be None
-    # The engineer_features_for_visitor_model should handle this (e.g., fill lags with 0)
-    visitor_engineered_df = engineer_features_for_visitor_model(
-        input_df_for_prediction_period, date_col_name, 
-        None, # actual_visitor_col_for_lag (None for future)
-        None  # actual_rescue_event_col_for_lag (None for future)
-    )
-    if visitor_engineered_df is None: return None
-    
-    X_visitor_processed = preprocess_for_prediction(visitor_engineered_df, visitor_pkg, "Visitor")
-    if X_visitor_processed is None: return None
-        
-    predicted_visitors_log = visitor_pkg['model'].predict(X_visitor_processed)
-    predicted_visitors_orig = np.expm1(predicted_visitors_log) if APPLY_LOG_TRANSFORM_VISITOR_TARGET else predicted_visitors_log
-    predicted_visitors_orig = np.maximum(0, predicted_visitors_orig)
-    
-    # Prepare data for rescue model (add predicted visitors to the input for rescue FE)
-    df_for_rescue_fe = input_df_for_prediction_period.copy()
-    df_for_rescue_fe[PREDICTED_VISITOR_COL_NAME] = predicted_visitors_orig # Use original scale predicted visitors
-    print("Predicted visitor counts added as a feature.")
-
-    # --- Rescue Probability Prediction ---
-    print("\nStep 2: Predicting Rescue Probability...")
-    rescue_engineered_df = engineer_features_for_rescue_model(
-        df_for_rescue_fe, date_col_name, 
-        PREDICTED_VISITOR_COL_NAME,
-        None # actual_rescue_event_col_for_lag (None for future)
-    )
-    if rescue_engineered_df is None: return None
-        
-    X_rescue_processed = preprocess_for_prediction(rescue_engineered_df, rescue_pkg, "Rescue")
-    if X_rescue_processed is None: return None
-        
-    predicted_rescue_probs = rescue_pkg['model'].predict_proba(X_rescue_processed)[:, 1]
-
-    # --- Combine Results ---
-    results_df = input_df_for_prediction_period[[date_col_name]].copy()
-    results_df[PREDICTED_VISITOR_COL_NAME] = predicted_visitors_orig
-    results_df['Predicted_Rescue_Probability'] = predicted_rescue_probs
-    
-    print("--- Full Prediction Pipeline Complete ---")
-    return results_df
 
 # --- Main Execution ---
 if __name__ == '__main__':
@@ -539,7 +506,6 @@ if __name__ == '__main__':
     if len(final_results_df) == len(predicted_rescue_probabilities):
         final_results_df['Predicted_Rescue_Probability'] = predicted_rescue_probabilities
     else:
-        # ... (이전과 동일한 병합 로직) ...
         print("경고: 예측된 조난 확률과 결과 DataFrame 길이 불일치. 'Date' 기준으로 병합 시도.")
         temp_rescue_proba_df = pd.DataFrame({
             DATE_COLUMN: df_rescue_engineered_target_period[DATE_COLUMN].values,

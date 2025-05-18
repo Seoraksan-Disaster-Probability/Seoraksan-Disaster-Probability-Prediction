@@ -1,0 +1,38 @@
+Timestamp: 20250518_232511
+Input File: data/preprocessed_data.csv
+Split Ratios: 60.0%/20.0%/20.0%
+Best Hyperparameters: {'class_weight': 'balanced', 'max_depth': 11, 'max_features': 'log2', 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 476}
+Validation Metrics: {'Accuracy': 0.791907514450867, 'Precision': 0.6140350877192983, 'Recall': 0.4117647058823529, 'F1-Score': 0.49295774647887325, 'ROC_AUC': 0.7986026594545865}
+Test Performance (Adj. Threshold): {'Accuracy': 0.6867816091954023, 'Precision': 0.4027777777777778, 'Recall': 0.7160493827160493, 'F1-Score': 0.5155555555555555, 'ROC_AUC': 0.762472834882323}
+Optimal Threshold: 0.3298
+Selected Features (30):
+Temp_Humidity_Interaction
+Total_Visitor_Count_Lag7
+MaxTempC(℃)
+Total_Visitor_Count_Lag14
+Total_Visitor_Count_Lag1
+Total_Visitor_Count_Roll7_Mean
+AvgTempC(℃)
+Total_Visitor_Count_Roll14_Mean
+MinTempC(℃)
+Total_Visitor_Count_Roll30_Mean
+Avg_Humidity_pct(%rh)
+MaxWindSpd(m/s)
+Total_Visitor_Count_Lag30
+Diurnal_Temperature_Range
+AvgWindSpd(m/s)
+Hour_Of_Max_Temp
+Precipitation_mm(mm)
+Hour_Of_Min_Temp
+month_10
+is_weekend
+rescue_event_yesterday
+month_4
+month_6
+month_5
+month_2
+is_final_long_holiday_rescue
+month_9
+month_1
+month_3
+month_11
