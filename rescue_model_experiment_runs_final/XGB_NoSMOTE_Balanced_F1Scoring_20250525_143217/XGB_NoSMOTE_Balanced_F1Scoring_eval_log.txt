@@ -1,0 +1,38 @@
+Timestamp: 20250525_143217
+Input File: data/preprocessed_merged_data.csv
+Split Ratios: 60%/20%/20%
+Best Hyperparameters: {'colsample_bytree': 0.6594878151468806, 'gamma': 0.4224376554847273, 'learning_rate': 0.012327193573582588, 'max_depth': 4, 'min_child_weight': 3, 'n_estimators': 204, 'reg_alpha': 0.9920749085868124, 'reg_lambda': 1.3857807173838788, 'subsample': 0.739334641781279}
+Validation Metrics: {'Accuracy': 0.7890173410404624, 'Precision': 0.6071428571428571, 'Recall': 0.4, 'F1-Score': 0.48226950354609927, 'ROC_AUC': 0.8065359477124183}
+Test Performance (Adj. Threshold): {'Accuracy': 0.7442528735632183, 'Precision': 0.46551724137931033, 'Recall': 0.6666666666666666, 'F1-Score': 0.5482233502538071, 'ROC_AUC': 0.787534100892403}
+Optimal Threshold: 0.4511
+Selected Features (30):
+Temp_Humidity_Interaction
+Total_Visitor_Count_Lag1
+MaxTempC(℃)
+Total_Visitor_Count_Lag7
+MinTempC(℃)
+AvgTempC(℃)
+Total_Visitor_Count_Roll7_Mean
+Total_Visitor_Count_Lag14
+Total_Visitor_Count_Roll14_Mean
+Total_Visitor_Count_Roll30_Mean
+Total_Visitor_Count_Lag30
+Avg_Humidity_pct(%rh)
+Diurnal_Temperature_Range
+AvgWindSpd(m/s)
+MaxWindSpd(m/s)
+Hour_Of_Max_Temp
+Precipitation_mm(mm)
+Hour_Of_Min_Temp
+is_weekend
+rescue_event_yesterday
+month_10
+month_4
+month_5
+is_final_long_holiday_rescue
+month_6
+month_9
+consecutive_freeze_2days
+month_8
+month_1
+month_2

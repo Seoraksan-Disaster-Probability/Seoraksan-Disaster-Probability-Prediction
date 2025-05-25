@@ -403,7 +403,7 @@ if __name__ == '__main__':
         ORIGINAL_RESCUE_EVENT_COL_FOR_FE # 실제 조난 이벤트 컬럼 전달
     )
 
-    # 1d. 엔지니어링된 데이터에서 실제 예측 대상 기간(마지막 14일)만 선택
+    # 1d. 엔지니어링된 데이터에서 실제 예측 대상 기간(마지막 365일)만 선택
     df_engineered_visitor_target_period = df_engineered_visitor_slice.tail(TEST_PREDICTION_RANGE).copy()
     if len(df_engineered_visitor_target_period) != TEST_PREDICTION_RANGE:
          print(f"오류: 탐방객 FE 후 예측 대상 기간 데이터 추출 실패."); exit()

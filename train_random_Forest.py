@@ -15,9 +15,12 @@ from datetime import datetime
 import seaborn as sns
 from imblearn.over_sampling import SMOTE
 from scipy.stats import randint as sp_randint
+from scipy.stats import uniform as sp_uniform
 import holidays
 import platform
-from matplotlib import font_manager
+import lightgbm as lgb
+import xgboost as xgb # XGBoost 추가
+
 
 # --- 0. Configuration ---
 INPUT_DATA_FILE = "data/preprocessed_merged_data.csv" # 이미 전처리된 데이터 사용 가정
@@ -35,14 +38,25 @@ TOP_N_FEATURES_RESCUE = 30
 RANDOM_SEED = 42
 APPLY_SMOTE_GLOBAL = True # SMOTE 적용 여부 전역 플래그 (이름 변경 고려)
 
-# --- 실험 조건 정의 --- <--- 이 부분을 추가하거나 주석 해제하세요!
+
 EXPERIMENT_CONDITIONS_RESCUE = [
-    {"name": "RF_SMOTE_RecallScoring", "model_type": "rf", "apply_smote": True, "scorer": "recall", "n_iter": 50, "class_weight_rf": None}, # SMOTE 사용 시 class_weight는 None 또는 기본값
-    {"name": "RF_NoSMOTE_Balanced_F1Scoring", "model_type": "rf", "apply_smote": False, "scorer": "f1", "n_iter": 50, "class_weight_rf": "balanced"},
-    {"name": "RF_SMOTE_F1Scoring", "model_type": "rf", "apply_smote": True, "scorer": "f1", "n_iter": 50, "class_weight_rf": None},
-    # 다른 모델 또는 조건 추가 가능
-    # {"name": "LGBM_SMOTE_RecallScoring", "model_type": "lgbm", "apply_smote": True, "scorer": "recall", "n_iter": 50},
+    # --- RandomForestClassifier Experiments ---
+    {"name": "RF_SMOTE_RecallScoring",        "model_type": "rf",   "apply_smote": True,  "scorer": "recall", "n_iter": 50, "class_weight_model": None},
+    {"name": "RF_NoSMOTE_Balanced_F1Scoring", "model_type": "rf",   "apply_smote": False, "scorer": "f1",     "n_iter": 50, "class_weight_model": "balanced"},
+    {"name": "RF_SMOTE_F1Scoring",            "model_type": "rf",   "apply_smote": True,  "scorer": "f1",     "n_iter": 50, "class_weight_model": None},
+
+    # --- LightGBMClassifier Experiments ---
+    {"name": "LGBM_SMOTE_RecallScoring",        "model_type": "lgbm", "apply_smote": True,  "scorer": "recall", "n_iter": 50, "lgbm_is_unbalance": False, "lgbm_scale_pos_weight": None}, # SMOTE 사용 시 is_unbalance=False 또는 scale_pos_weight 기본값
+    {"name": "LGBM_NoSMOTE_Balanced_F1Scoring", "model_type": "lgbm", "apply_smote": False, "scorer": "f1",     "n_iter": 50, "lgbm_is_unbalance": True,  "lgbm_scale_pos_weight": None}, # SMOTE 미사용 시 is_unbalance=True 또는 scale_pos_weight 계산
+    # 또는 scale_pos_weight를 직접 계산하여 전달: "lgbm_scale_pos_weight": (count_negative / count_positive)
+    {"name": "LGBM_SMOTE_F1Scoring",            "model_type": "lgbm", "apply_smote": True,  "scorer": "f1",     "n_iter": 50, "lgbm_is_unbalance": False, "lgbm_scale_pos_weight": None},
+
+    # --- XGBoostClassifier Experiments ---
+    {"name": "XGB_SMOTE_RecallScoring",        "model_type": "xgb",  "apply_smote": True,  "scorer": "recall", "n_iter": 50, "xgb_scale_pos_weight": None}, # SMOTE 사용 시 scale_pos_weight 기본값(1)
+    {"name": "XGB_NoSMOTE_Balanced_F1Scoring", "model_type": "xgb",  "apply_smote": False, "scorer": "f1",     "n_iter": 50, "xgb_scale_pos_weight": "calculate"}, # SMOTE 미사용 시 scale_pos_weight 계산 필요
+    {"name": "XGB_SMOTE_F1Scoring",            "model_type": "xgb",  "apply_smote": True,  "scorer": "f1",     "n_iter": 50, "xgb_scale_pos_weight": None},
 ]
+
 # -------------------------
 
 # --- Directory Setup ---
@@ -180,7 +194,7 @@ def engineer_features_for_rescue(df_input, date_col, visitor_col_name, rescue_ev
         finally: df_eng.drop(columns=['temp_year_week', 'temp_last_week_date', 'temp_last_year_week'], inplace=True, errors='ignore')
     else: df_eng['rescue_in_last_week'] = 0
         
-    # Time transformation
+    # Time transformation 
     time_map = {'TimeOfMaxTempC': 'Hour_Of_Max_Temp', 'TimeOfMinTempC': 'Hour_Of_Min_Temp'}
     for orig, new in time_map.items():
         if orig in df_eng.columns:
@@ -281,34 +295,143 @@ def prepare_and_split_data_for_rescue_training(df_engineered, target_col, date_c
 
 # --- 5. Model Training and Tuning (for Rescue Model) ---
 def train_and_tune_rescue_model(X_train, y_train, X_val, y_val, 
-                                model_type_str, param_dist, n_iter, scorer, seed, 
-                                viz_save_path): # <--- 시각화 저장 경로 인자 추가
+                                model_type_str, # 모델 타입 (예: 'rf', 'lgbm', 'xgb')
+                                param_dist,     # 해당 모델의 하이퍼파라미터 분포
+                                n_iter,         # RandomizedSearchCV 반복 횟수
+                                scorer,         # RandomizedSearchCV 평가 지표
+                                seed,           # 랜덤 시드
+                                viz_save_path,  # 시각화 저장 경로
+                                model_specific_params=None): # 모델별 특수 파라미터 (딕셔너리)
+    """
+    지정된 타입의 분류 모델을 RandomizedSearchCV로 훈련하고 튜닝합니다.
+    LightGBM과 XGBoost의 경우 조기 종료를 위한 fit_params를 설정합니다.
+    """
     print(f"\n--- 5. Training and Tuning Rescue Model ({model_type_str.upper()}) ---")
-    if model_type_str.lower() == 'rf':
-        # estimator 생성 시 class_weight는 param_dist를 통해 RandomizedSearchCV가 설정함
-        estimator = RandomForestClassifier(random_state=seed, n_jobs=-1) 
-    else: 
-        raise ValueError(f"Unsupported model type: {model_type_str}")
-
-    cv = 5 
-    random_search = RandomizedSearchCV(estimator, param_dist, n_iter=n_iter, scoring=scorer, cv=cv, random_state=seed, n_jobs=-1, verbose=1)
-    random_search.fit(X_train, y_train)
     
-    best_params = random_search.best_params_
-    best_score = random_search.best_score_
-    tuned_model = random_search.best_estimator_
-    print(f"Best parameters: {best_params}")
-    print(f"Best CV Score ({scorer}): {best_score:.4f}")
+    if model_specific_params is None:
+        model_specific_params = {}
 
-    preds_val = tuned_model.predict(X_val); probs_val = tuned_model.predict_proba(X_val)[:, 1]
-    val_metrics = {'Accuracy': accuracy_score(y_val, preds_val), 
-                   'Precision': precision_score(y_val, preds_val, zero_division=0),
-                   'Recall': recall_score(y_val, preds_val, zero_division=0), 
-                   'F1-Score': f1_score(y_val, preds_val, zero_division=0),
-                   'ROC_AUC': roc_auc_score(y_val, probs_val)}
-    print(f"Validation metrics (default threshold): {val_metrics}")
+    fit_params_tuning = {} # 조기 종료 등을 위한 fit 파라미터
+
+    if model_type_str.lower() == 'rf':
+        # RandomForest의 class_weight는 param_dist를 통해 RandomizedSearchCV가 설정합니다.
+        # model_specific_params에서 가져온 class_weight는 param_dist에 포함되어야 합니다.
+        estimator = RandomForestClassifier(random_state=seed, n_jobs=-1)
+        # param_dist에 'class_weight': [model_specific_params.get('class_weight')] 형태로 전달됨
+    
+    elif model_type_str.lower() == 'lgbm':
+        is_unbalance_val = model_specific_params.get('lgbm_is_unbalance', False)
+        scale_pos_weight_val = model_specific_params.get('lgbm_scale_pos_weight')
+        
+        if scale_pos_weight_val == "calculate" and not model_specific_params.get("apply_smote", False):
+            count_negative = np.sum(y_train == 0)
+            count_positive = np.sum(y_train == 1)
+            if count_positive > 0:
+                scale_pos_weight_val = count_negative / count_positive
+            else:
+                scale_pos_weight_val = 1 
+            print(f"  Calculated LGBM scale_pos_weight: {scale_pos_weight_val:.2f}")
+
+        estimator = lgb.LGBMClassifier(
+            random_state=seed, n_jobs=-1, verbosity=-1,
+            is_unbalance=is_unbalance_val,
+            scale_pos_weight=scale_pos_weight_val if isinstance(scale_pos_weight_val, (int, float)) else None
+        )
+        if X_val is not None and y_val is not None and not X_val.empty:
+            fit_params_tuning['callbacks'] = [lgb.early_stopping(50, verbose=False), lgb.log_evaluation(0)]
+            fit_params_tuning['eval_set'] = [(X_val, y_val)]
+            fit_params_tuning['eval_metric'] = 'logloss' # 또는 'auc' 등 LightGBM이 지원하는 분류 메트릭
+
+    elif model_type_str.lower() == 'xgb':
+        scale_pos_weight_val_xgb = model_specific_params.get('xgb_scale_pos_weight')
+
+        if scale_pos_weight_val_xgb == "calculate" and not model_specific_params.get("apply_smote", False):
+            count_negative = np.sum(y_train == 0)
+            count_positive = np.sum(y_train == 1)
+            if count_positive > 0:
+                scale_pos_weight_val_xgb = count_negative / count_positive
+            else:
+                scale_pos_weight_val_xgb = 1
+            print(f"  Calculated XGBoost scale_pos_weight: {scale_pos_weight_val_xgb:.2f}")
+
+        estimator = xgb.XGBClassifier(
+            random_state=seed, n_jobs=-1, use_label_encoder=False, eval_metric='logloss', # XGBoost는 eval_metric을 생성자에 전달
+            scale_pos_weight=scale_pos_weight_val_xgb if isinstance(scale_pos_weight_val_xgb, (int, float)) else None
+        )
+        if X_val is not None and y_val is not None and not X_val.empty:
+            fit_params_tuning['eval_set'] = [(X_val, y_val)]
+            # XGBoost는 fit 시 verbose 제어 가능, RandomizedSearchCV의 verbose와 중복될 수 있으므로 주의
+            # fit_params_tuning['verbose'] = False 
+    else: 
+        raise ValueError(f"Unsupported model type for rescue: {model_type_str}")
+
+    # 교차 검증 전략 (예: StratifiedKFold 또는 TimeSeriesSplit)
+    # 여기서는 간단히 cv=5 (StratifiedKFold가 기본) 사용. 시계열이면 TimeSeriesSplit 고려.
+    cv_strategy = 5 
+    # from sklearn.model_selection import TimeSeriesSplit
+    # cv_strategy = TimeSeriesSplit(n_splits=3) # 시계열 데이터인 경우
+
+    random_search = RandomizedSearchCV(
+        estimator=estimator,
+        param_distributions=param_dist, 
+        n_iter=n_iter, 
+        scoring=scorer, 
+        cv=cv_strategy, 
+        random_state=seed, 
+        n_jobs=-1, 
+        verbose=1
+    )
+    
+    print(f"RandomizedSearchCV tuning started (n_iter={n_iter})...")
+    if fit_params_tuning: # LightGBM 또는 XGBoost에서 조기 종료 파라미터가 설정된 경우
+        random_search.fit(X_train, y_train, **fit_params_tuning)
+    else:
+        random_search.fit(X_train, y_train)
+    print("RandomizedSearchCV tuning complete.")
+
+    best_params = random_search.best_params_
+    best_cv_score = random_search.best_score_ # RandomizedSearchCV가 계산한 최적 점수
+    tuned_model = random_search.best_estimator_ # 최적 파라미터로 학습된 모델
+
+    print(f"\nBest parameters found: {best_params}")
+    # scorer가 문자열이 아닐 경우 (make_scorer 객체 등) 이름 추출 시도
+    scorer_name_display = scorer
+    if not isinstance(scorer, str) and hasattr(scorer, '_score_func') and hasattr(scorer._score_func, '__name__'):
+        scorer_name_display = scorer._score_func.__name__
+    print(f"Best CV Score ({scorer_name_display}): {best_cv_score:.4f}")
+    
+    # LightGBM/XGBoost의 경우, 조기 종료로 인해 실제 사용된 트리 수 확인
+    if hasattr(tuned_model, 'best_iteration_') and tuned_model.best_iteration_ is not None: # LightGBM
+        print(f"  Early stopping (LGBM) at iteration: {tuned_model.best_iteration_}")
+    elif hasattr(tuned_model, 'best_ntree_limit') and tuned_model.best_ntree_limit is not None: # XGBoost
+         # XGBoost의 best_ntree_limit은 조기 종료 시 사용된 트리 수 + 1일 수 있음 (버전 따라 다름)
+        print(f"  Early stopping (XGB) at ntree_limit: {tuned_model.best_ntree_limit}")
+
+
+    print("\nEvaluating tuned model on validation set (default threshold 0.5):")
+    preds_val = tuned_model.predict(X_val)
+    probs_val = tuned_model.predict_proba(X_val)[:, 1] # 양성 클래스(1) 확률
+    
+    val_metrics = {
+        'Accuracy': accuracy_score(y_val, preds_val), 
+        'Precision': precision_score(y_val, preds_val, zero_division=0),
+        'Recall': recall_score(y_val, preds_val, zero_division=0), 
+        'F1-Score': f1_score(y_val, preds_val, zero_division=0),
+        'ROC_AUC': roc_auc_score(y_val, probs_val) # 확률값 사용
+    }
+    for name, score_val in val_metrics.items(): 
+        print(f"  Validation {name}: {score_val:.4f}")
+    
     cm_val = confusion_matrix(y_val, preds_val)
-    plot_confusion_matrix_heatmap(cm_val, [0,1], f'Validation CM ({model_type_str.upper()})', f'rescue_val_cm_{model_type_str.lower()}.png', save_dir=viz_save_path)
+    # plot_confusion_matrix_heatmap 함수는 이 파일 내 다른 곳에 정의되어 있다고 가정
+    plot_confusion_matrix_heatmap(
+        cm_val, 
+        classes=[0,1], 
+        title=f'Validation CM ({model_type_str.upper()})', 
+        filename=f'rescue_val_cm_{model_type_str.lower()}.png', 
+        save_dir=viz_save_path # 전달받은 경로 사용
+    )
+    
     return tuned_model, best_params, val_metrics
 
 # --- 6. Model Evaluation and Saving (for Rescue Model) ---
@@ -406,11 +529,7 @@ if __name__ == '__main__':
         param_dist_current_exp = {}
 
         if current_model_type == "rf":
-            # RandomForestClassifier의 class_weight는 RandomizedSearchCV의 param_distributions에 포함
-            # condition에서 class_weight_rf 값을 가져와서 리스트 형태로 param_dist_current_exp에 추가
-            
-            # SMOTE를 사용하지 않고 class_weight_rf가 None이면 'balanced'를 기본으로 사용
-            rf_class_weight_value = exp_condition.get("class_weight_rf")
+            rf_class_weight_value = exp_condition.get("class_weight") # EXPERIMENT_CONDITIONS_RESCUE의 키와 일치
             if rf_class_weight_value is None and not exp_condition.get("apply_smote", False):
                 rf_class_weight_value = 'balanced'
             
@@ -420,14 +539,40 @@ if __name__ == '__main__':
                 'min_samples_split': sp_randint(2, 11), 
                 'min_samples_leaf': sp_randint(1, 11),
                 'max_features': ['sqrt', 'log2', None],
-                # class_weight는 RandomizedSearchCV가 선택할 수 있도록 리스트로 전달
-                # 또는, 특정 값을 고정하고 싶다면 해당 값만 리스트에 넣음
-                'class_weight': [rf_class_weight_value] # <--- 수정된 부분: param_dist에 포함
+                'class_weight': [rf_class_weight_value] 
             }
-        # elif current_model_type == "lgbm":
-            # param_dist_current_exp = { ... } # LightGBM용 파라미터 분포
-
-        # train_and_tune_rescue_model 호출 시 class_weight_option 인자 제거
+        elif current_model_type == "lgbm":
+            # LightGBMClassifier용 파라미터 분포 (이전 답변 예시 활용)
+            param_dist_current_exp = {
+                'n_estimators': sp_randint(100, 500), # 조기 종료 사용 시 더 크게 설정 가능
+                'learning_rate': sp_uniform(0.01, 0.1), # 0.01 ~ 0.11
+                'max_depth': sp_randint(3, 16),
+                'num_leaves': sp_randint(10, 100),
+                'min_child_samples': sp_randint(5, 51),
+                'subsample': sp_uniform(0.6, 0.4),      # 0.6 ~ 1.0
+                'colsample_bytree': sp_uniform(0.5, 0.5),# 0.5 ~ 1.0
+                'reg_alpha': sp_uniform(0, 2),
+                'reg_lambda': sp_uniform(0, 2),
+                # is_unbalance, scale_pos_weight는 train_and_tune_rescue_model 함수 내부에서
+                # condition 딕셔너리를 통해 처리하도록 함 (이전 답변 참고)
+            }
+        elif current_model_type == "xgb":
+            # XGBoostClassifier용 파라미터 분포 (이전 답변 예시 활용)
+            param_dist_current_exp = {
+                'n_estimators': sp_randint(100, 500),
+                'learning_rate': sp_uniform(0.01, 0.1),
+                'max_depth': sp_randint(3, 10),
+                'min_child_weight': sp_randint(1, 10),
+                'gamma': sp_uniform(0, 0.5),
+                'subsample': sp_uniform(0.6, 0.4),
+                'colsample_bytree': sp_uniform(0.5, 0.5),
+                'reg_alpha': sp_uniform(0, 2),
+                'reg_lambda': sp_uniform(0, 2),
+                # scale_pos_weight는 train_and_tune_rescue_model 함수 내부에서
+                # condition 딕셔너리를 통해 처리하도록 함
+            }
+        
+        # train_and_tune_rescue_model 호출 시 model_specific_params 전달
         trained_model_exp, best_params_exp, val_metrics_exp = train_and_tune_rescue_model(
             X_train_to_fit, y_train_to_fit, X_val_p, y_val_p, 
             model_type_str=current_model_type,
@@ -435,8 +580,10 @@ if __name__ == '__main__':
             n_iter=exp_condition.get("n_iter", 50), 
             scorer=exp_condition.get("scorer", "recall"), 
             seed=RANDOM_SEED,
-            viz_save_path=current_exp_viz_dir # <--- 시각화 저장 경로 전달
+            viz_save_path=current_exp_viz_dir,
+            model_specific_params=exp_condition # <--- condition 딕셔너리 전체를 전달
         )
+        
         
         evaluate_and_save_rescue_model(
             trained_model_exp, X_test_p, y_test_p, scaler_p, imputer_means_p, cols_scaled_p,
